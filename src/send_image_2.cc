@@ -11,6 +11,14 @@
 #include <fstream>
 #include "semafor.h"
 
+// imports for tcp client
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h>
+
+int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num);
+int connect_to_server();
+
 int main(int argc, char** argv) {
     init();
     int n;
@@ -41,26 +49,46 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    // for (n= 0; n<max_iter; n++)
-    while(1)
+    int sockFD = connect_to_server();
+    if (sockFD < 0){
+        printf("cons: Error while connecting to server %s\n", strerror(errno));
+
+        exit(1);
+    }
+
+    std::string reply;
+    int chunk_size = 1024;
+    int chunk_num = SIZE/chunk_size;
+
+    for (n= 0; n<max_iter; n++)
+    // while(1)
     {
-        sem_wait(&S->full);
-        sem_wait(&S->mutex);
-        sem_getvalue(&S->full, &n);
+        // sem_wait(&S->full);
+        // sem_wait(&S->mutex);
+        // sem_getvalue(&S->full, &n);
 
         sprintf(img_name, "from-shared-%d.ppm", n);
         memcpy(data, shm_base+n*SIZE, SIZE*sizeof(unsigned char));
 
         // here we'll send to tcp server
-        std::ofstream outFile(img_name, std::ios::binary);
-        outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
-        outFile.write ( ( char* ) data, SIZE);
+        // std::ofstream outFile(img_name, std::ios::binary);
+        // outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
+        // outFile.write ( ( char* ) data, SIZE);
 
-        std::cout<<"Saved file "<<img_name<<std::endl;
 
-        std::cout<<"Got data from semaphore"<<(S->buff)[n]<<std::endl;
-        sem_post(&S->mutex);
-        sem_post(&S->empty);
+        // send image in chunks
+        auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
+        // auto nbytes_send = send(sockFD, (char *)data, SIZE, 0);
+        std::cout<<"Sent file "<<img_name<<", sent bytes: "<<nbytes_send<<std::endl;
+
+
+        // auto bytes_recv = recv(sockFD, &reply.front(), reply.size(), 0);
+
+        // std::cout<<"Response: "<<reply<<std::endl;
+
+        std::cout<<"Got data from semaphore "<<(S->buff)[n]<<std::endl;
+        // sem_post(&S->mutex);
+        // sem_post(&S->empty);
         sleep(CONSUMER_SLEEP_SEC);
     }
 
@@ -86,4 +114,68 @@ int main(int argc, char** argv) {
 
 
     return 0;
+}
+
+int connect_to_server() {
+    auto &ipAddress = "10.42.0.1";
+    auto &portNum   = "9999";
+    
+    addrinfo hints, *p;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags    = AI_PASSIVE;
+
+    int gAddRes = getaddrinfo(ipAddress, portNum, &hints, &p);
+    if (gAddRes != 0) {
+        std::cerr << gai_strerror(gAddRes) << "\n";
+        return -2;
+    }
+
+    if (p == NULL) {
+        std::cerr << "No addresses found\n";
+        return -3;
+    }
+
+    // socket() call creates a new socket and returns it's descriptor
+    int sockFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    if (sockFD == -1) {
+        std::cerr << "Error while creating socket\n";
+        return -4;
+    }
+
+    // Note: there is no bind() call as there was in Hello TCP Server
+    // why? well you could call it though it's not necessary
+    // because client doesn't necessarily has to have a fixed port number
+    // so next call will bind it to a random available port number
+
+    // connect() call tries to establish a TCP connection to the specified server
+    int connectR = connect(sockFD, p->ai_addr, p->ai_addrlen);
+    if (connectR == -1) {
+        close(sockFD);
+        std::cerr << "Error while connecting socket\n";
+        return -5;
+    }
+
+    return sockFD;
+}
+
+int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num) {
+    int bytes_sent = 0;
+    int current_bytes;
+    std::string reply;
+    for (int i=0; i<chunk_num; i++){
+        current_bytes = send(socket_fd, (char *)data+i*chunk_size, chunk_size, 0);
+        if (current_bytes < chunk_size){
+            return -1;
+        }
+
+        bytes_sent += current_bytes;
+        auto bytes_recv = recv(socket_fd, &reply.front(), reply.size(), 0);
+
+        std::cout<<"Response for chunk: "<<reply<<std::endl;
+
+    }
+
+    return bytes_sent;
 }
