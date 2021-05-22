@@ -38,12 +38,12 @@ int main(int argc, char **argv) {
     /* configure the size of the shared memory segment */
     ftruncate(shm_fd, SIZE*BUFFER_SIZE);
 
-    // for (int n=0; n<BUFFER_SIZE; n++)
-    while (1)
+    for (int n=0; n<BUFFER_SIZE; n++)
+    // while (1)
     {
-        sem_wait(&S->empty);
-        sem_wait(&S->mutex);
-        sem_getvalue(&S->full, &n);
+        // sem_wait(&S->empty);
+        // sem_wait(&S->mutex);
+        // sem_getvalue(&S->full, &n);
 
 
         /* map the shared memory segment to the address space of the process */
@@ -69,9 +69,9 @@ int main(int argc, char **argv) {
 
 
         std::cout<<"Saved to shared memory "<<n<<std::endl;
-        (S->buff)[n] = n;
-        sem_post(&S->mutex);
-        sem_post(&S->full);
+        // (S->buff)[n] = n;
+        // sem_post(&S->mutex);
+        // sem_post(&S->full);
         sleep(PRODUCER_SLEEP_SEC);
     }
 

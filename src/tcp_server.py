@@ -2,6 +2,8 @@
 
 import socketserver
 
+SIZE = 1228800
+
 class Handler_TCPServer(socketserver.BaseRequestHandler):
     """
     The TCP Server class for demonstration.
@@ -12,12 +14,42 @@ class Handler_TCPServer(socketserver.BaseRequestHandler):
     """
 
     def handle(self):
+        chunk_size = 1024
+        chunk_num = SIZE/chunk_size
+        file_num = 0
         # self.request - TCP socket connected to the client
-        self.data = self.request.recv(1024).strip()
-        print("{} sent:".format(self.client_address[0]))
-        print(self.data)
-        # just send back ACK for data arrival confirmation
-        self.request.sendall("ACK from TCP Server".encode())
+        chunk_idx = 0
+        different_chunks = 0
+        cmp_file = open('from-shared-0.ppm', 'rb')
+        header_chunk = cmp_file.read(16)
+        print("Header is {}".format(header_chunk))
+        in_file = open('in_img-{}.ppm'.format(file_num), 'w')
+        in_file.write('P6\n1280 960 255\n')
+        in_file.close()
+        in_file = open('in_img-{}.ppm'.format(file_num), 'ab')
+        while True:
+            if chunk_idx < chunk_num:
+                self.data = self.request.recv(chunk_size).strip()
+
+                empty_bytes = chunk_size - len(self.data)
+                in_file.write(self.data)
+                for b in range(empty_bytes):
+                    in_file.write(b' ')
+                    different_chunks = different_chunks + 1
+
+                chunk_idx = chunk_idx + 1
+                self.request.sendall("ok".encode())
+
+            else:
+                in_file.close()
+                chunk_idx = 0
+                file_num = file_num + 1
+                in_file = open('in_img-{}.ppm'.format(file_num), 'w')
+                in_file.write('P6\n1280 960 255\n')
+                in_file.close()
+                in_file = open('in_img-{}.ppm'.format(file_num), 'ab')
+
+
 
 if __name__ == "__main__":
     # HOST, PORT = "localhost", 9999

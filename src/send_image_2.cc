@@ -71,9 +71,9 @@ int main(int argc, char** argv) {
         memcpy(data, shm_base+n*SIZE, SIZE*sizeof(unsigned char));
 
         // here we'll send to tcp server
-        // std::ofstream outFile(img_name, std::ios::binary);
-        // outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
-        // outFile.write ( ( char* ) data, SIZE);
+        std::ofstream outFile(img_name, std::ios::binary);
+        outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
+        outFile.write ( ( char* ) data, SIZE);
 
 
         // send image in chunks
@@ -163,15 +163,18 @@ int connect_to_server() {
 int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num) {
     int bytes_sent = 0;
     int current_bytes;
-    std::string reply;
+    std::string reply("no");
     for (int i=0; i<chunk_num; i++){
-        current_bytes = send(socket_fd, (char *)data+i*chunk_size, chunk_size, 0);
-        if (current_bytes < chunk_size){
-            return -1;
-        }
+        do {
+            current_bytes = send(socket_fd, (char *)data+i*chunk_size, chunk_size, 0);
+            if (current_bytes < chunk_size){
+                return -1;
+            }
+            auto bytes_recv = recv(socket_fd, &reply.front(), reply.size(), 0);
+
+        }   while (strcmp(reply.c_str(), "ok"));
 
         bytes_sent += current_bytes;
-        auto bytes_recv = recv(socket_fd, &reply.front(), reply.size(), 0);
 
         std::cout<<"Response for chunk: "<<reply<<std::endl;
 
