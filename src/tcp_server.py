@@ -20,9 +20,6 @@ class Handler_TCPServer(socketserver.BaseRequestHandler):
         # self.request - TCP socket connected to the client
         chunk_idx = 0
         different_chunks = 0
-        cmp_file = open('from-shared-0.ppm', 'rb')
-        header_chunk = cmp_file.read(16)
-        print("Header is {}".format(header_chunk))
         in_file = open('in_img-{}.ppm'.format(file_num), 'w')
         in_file.write('P6\n1280 960 255\n')
         in_file.close()
