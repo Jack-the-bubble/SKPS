@@ -1,6 +1,7 @@
 all:
 	g++ -g -std=c++11 -D_XOPEN_SOURCE=700 src/capture_image_2.cc -o capture_image.o -Iinclude/ -lraspicam -pthread -lrt
 	g++ -g -std=c++11 -D_XOPEN_SOURCE=700 src/send_image_2.cc -o send_image.o -Iinclude/ -pthread -lrt
+	g++ -g -std=c++11 src/execute_command.cc -o toggle_led.o -Iinclude/ -lwiringPi
 
 
 debug:

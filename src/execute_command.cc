@@ -18,6 +18,8 @@ int main()
     wiringPiSetup();			// Setup the library
     pinMode(0, OUTPUT);		// Configure GPIO0 as an output
     pinMode(1, INPUT);		// Configure GPIO1 as an input
+    
+    digitalWrite(0, 0);//init output
 
 
     // establish server connection
