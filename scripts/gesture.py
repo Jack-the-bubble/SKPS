@@ -6,12 +6,58 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 hand = None
 gesture = 0
+FILE_NAME = 'in-img.ppm'
+_DEBUG = False
 
 background = cv2.imread('background.jpg', cv2.IMREAD_GRAYSCALE)
 background = background[0:350, 0:423]
 
+
+class HandData:
+    top = (0, 0)
+    bottom = (0, 0)
+    left = (0, 0)
+    right = (0, 0)
+    centerX = 0
+    prevCenterX = 0
+    isInFrame = False
+    isWaving = False
+    fingers = None
+    gestureList = []
+
+    def __init__(self, top, bottom, left, right, centerX):
+        self.top = top
+        self.bottom = bottom
+        self.left = left
+        self.right = right
+        self.centerX = centerX
+        self.prevCenterX = 0
+        isInFrame = False
+        isWaving = False
+
+    def update(self, top, bottom, left, right):
+        self.top = top
+        self.bottom = bottom
+        self.left = left
+        self.right = right
+
+    def check_for_waving(self, centerX):
+        self.prevCenterX = self.centerX
+        self.centerX = centerX
+
+        if abs(self.centerX - self.prevCenterX > 3):
+            self.isWaving = True
+        else:
+            self.isWaving = False
+
 def main():
-    im = Image.open("in_img-0.ppm")
+    im = Image.open(FILE_NAME)
+
+    # img = cv2.imdecode(im, cv2.IMREAD_GRAYSCALE)
+    # crop_img = img[0:359, 1:426]
+
+
+
     im.save("in_img-0.jpg")
     img = cv2.imread("in_img-0.jpg")
     crop_img = img[0:359, 1:426]
@@ -33,42 +79,7 @@ def main():
     OBJ_THRESHOLD = 14
 
 
-    class HandData:
-        top = (0, 0)
-        bottom = (0, 0)
-        left = (0, 0)
-        right = (0, 0)
-        centerX = 0
-        prevCenterX = 0
-        isInFrame = False
-        isWaving = False
-        fingers = None
-        gestureList = []
 
-        def __init__(self, top, bottom, left, right, centerX):
-            self.top = top
-            self.bottom = bottom
-            self.left = left
-            self.right = right
-            self.centerX = centerX
-            self.prevCenterX = 0
-            isInFrame = False
-            isWaving = False
-
-        def update(self, top, bottom, left, right):
-            self.top = top
-            self.bottom = bottom
-            self.left = left
-            self.right = right
-
-        def check_for_waving(self, centerX):
-            self.prevCenterX = self.centerX
-            self.centerX = centerX
-
-            if abs(self.centerX - self.prevCenterX > 3):
-                self.isWaving = True
-            else:
-                self.isWaving = False
 
 
     # Here we take the current frame, the number of frames elapsed, and how many fingers we've detected
@@ -242,6 +253,7 @@ def main():
     region_right = FRAME_WIDTH
 
     frame = cv2.imread('in_img-0.jpg')
+    # frame = crop_img
 
         # Separate the region of interest and prep it for edge detection.
     region = get_region(frame)
