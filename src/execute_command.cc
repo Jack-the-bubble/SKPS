@@ -70,6 +70,8 @@ int main()
 
             exit(1);
     }
+    sprintf(client_queue_name+queue_name_len, " connected to server");
+    send_log_message(qd_server, client_queue_name, queue_name_len);
 
 // Main program loop
     while(1)
@@ -80,17 +82,15 @@ int main()
 
         // send info about capturing an image to logger
         chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
-        sprintf(client_queue_name+queue_name_len, " got command %s at %lld", reply.c_str(), chrono_current_time);
-        
-        if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
-            perror ("Client: Not able to send message to server");
-            continue;
-        }
 
         if (strcmp(reply.c_str(), "on ")) {
+            sprintf(client_queue_name+queue_name_len, " got command 'on' at %lld", chrono_current_time);
+            send_log_message(qd_server, client_queue_name, queue_name_len);
             digitalWrite(0, 1);
         }
         else if (strcmp(reply.c_str(), "off")) {
+            sprintf(client_queue_name+queue_name_len, " got command 'off' at %lld", chrono_current_time);
+            send_log_message(qd_server, client_queue_name, queue_name_len);
             digitalWrite(0, 0);
         }
 

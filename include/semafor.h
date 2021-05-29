@@ -11,6 +11,12 @@
 #include <raspicam/raspicam.h>
 #include <iostream>
 
+// imports for logger
+#include <chrono>
+#include <fcntl.h>
+#include <mqueue.h>
+#include <sys/stat.h>
+
 
 // namespace SEMAFOR{
     #define BUFFER_SIZE 5
@@ -50,6 +56,15 @@
         sem_init(&M->mutex,1,1);
         sem_init(&M->empty,1,BUFFER_SIZE);
         sem_init(&M->full,1,0);
+    }
+
+    void send_log_message(mqd_t qd_server, char client_queue_name[MAX_MSG_SIZE], short queue_name_len) {
+        // int64_t chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
+
+        
+        if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
+            perror ("Client: Not able to send message to server");
+        }
     }
 
 // }
