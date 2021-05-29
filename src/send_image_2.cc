@@ -60,26 +60,28 @@ int main(int argc, char** argv) {
     int chunk_size = 1024;
     int chunk_num = SIZE/chunk_size;
 
-    for (n= 0; n<max_iter; n++)
-    // while(1)
+    std::cout<<"Waiting for images from shared mem"<<std::endl;
+
+    // for (n= 0; n<max_iter; n++)
+    while(1)
     {
-        // sem_wait(&S->full);
-        // sem_wait(&S->mutex);
-        // sem_getvalue(&S->full, &n);
+        sem_wait(&S->full);
+        sem_wait(&S->mutex);
+        sem_getvalue(&S->full, &n);
 
         sprintf(img_name, "from-shared-%d.ppm", n);
         memcpy(data, shm_base+n*SIZE, SIZE*sizeof(unsigned char));
 
         // here we'll send to tcp server
-        std::ofstream outFile(img_name, std::ios::binary);
-        outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
-        outFile.write ( ( char* ) data, SIZE);
+        // std::ofstream outFile(img_name, std::ios::binary);
+        // outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
+        // outFile.write ( ( char* ) data, SIZE);
 
 
         // send image in chunks
-        auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
-        // auto nbytes_send = send(sockFD, (char *)data, SIZE, 0);
-        std::cout<<"Sent file "<<img_name<<", sent bytes: "<<nbytes_send<<std::endl;
+        // auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
+        // std::cout<<"Sent file "<<img_name<<", sent bytes: "<<nbytes_send<<std::endl;
+        std::cout<<"Sent file "<<img_name<<std::endl;
 
 
         // auto bytes_recv = recv(sockFD, &reply.front(), reply.size(), 0);
@@ -87,9 +89,9 @@ int main(int argc, char** argv) {
         // std::cout<<"Response: "<<reply<<std::endl;
 
         std::cout<<"Got data from semaphore "<<(S->buff)[n]<<std::endl;
-        // sem_post(&S->mutex);
-        // sem_post(&S->empty);
-        sleep(CONSUMER_SLEEP_SEC);
+        sem_post(&S->mutex);
+        sem_post(&S->empty);
+        // sleep(CONSUMER_SLEEP_SEC);
     }
 
 

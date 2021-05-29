@@ -8,6 +8,12 @@
 #include <sys/mman.h>
 #include <errno.h>
 
+// includes for logging
+// #include <chrono>
+// #include <fcntl.h>
+// #include <mqueue.h>
+// #include <sys/stat.h>
+
 
 int main(int argc, char **argv) {
     init();
@@ -38,24 +44,27 @@ int main(int argc, char **argv) {
     /* configure the size of the shared memory segment */
     ftruncate(shm_fd, SIZE*BUFFER_SIZE);
 
-    for (int n=0; n<BUFFER_SIZE; n++)
-    // while (1)
+    /* map the shared memory segment to the address space of the process */
+    shm_base = (char *)mmap(0, SIZE*BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (shm_base == MAP_FAILED) {
+        printf("prod: Map failed: %s\n", strerror(errno));
+        // close and shm_unlink?
+        exit(1);
+    }
+    unsigned char *data=new unsigned char[  camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_GRAY )];
+
+    std::cout<<"Wait before capturing images"<<std::endl;
+
+    // for (int n=0; n<BUFFER_SIZE; n++)
+    while (1)
     {
-        // sem_wait(&S->empty);
-        // sem_wait(&S->mutex);
-        // sem_getvalue(&S->full, &n);
+        sem_wait(&S->empty);
+        sem_wait(&S->mutex);
+        sem_getvalue(&S->full, &n);
 
 
-        /* map the shared memory segment to the address space of the process */
-        shm_base = (char *)mmap(0, SIZE*BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-        if (shm_base == MAP_FAILED) {
-            printf("prod: Map failed: %s\n", strerror(errno));
-            // close and shm_unlink?
-            exit(1);
-        }
 
         camera.grab();
-        unsigned char *data=new unsigned char[  camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_GRAY )];
 
         camera.retrieve(data, raspicam::RASPICAM_FORMAT_GRAY);
 
@@ -69,10 +78,10 @@ int main(int argc, char **argv) {
 
 
         std::cout<<"Saved to shared memory "<<n<<std::endl;
-        // (S->buff)[n] = n;
-        // sem_post(&S->mutex);
-        // sem_post(&S->full);
-        sleep(PRODUCER_SLEEP_SEC);
+        (S->buff)[n] = n;
+        sem_post(&S->mutex);
+        sem_post(&S->full);
+        // sleep(PRODUCER_SLEEP_SEC);
     }
 
     /*

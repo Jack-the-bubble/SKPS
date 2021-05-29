@@ -1,13 +1,14 @@
 all:
-	g++ -g -std=c++11 -D_XOPEN_SOURCE=700 src/capture_image_2.cc -o capture_image.o -Iinclude/ -lraspicam -pthread -lrt
-	g++ -g -std=c++11 -D_XOPEN_SOURCE=700 src/send_image_2.cc -o send_image.o -Iinclude/ -pthread -lrt
-	g++ -g -std=c++11 src/execute_command.cc -o toggle_led.o -Iinclude/ -lwiringPi
+	g++ -std=c++11 -D_XOPEN_SOURCE=700 src/capture_image_2.cc -o capture_image.o -Iinclude/ -lraspicam -pthread -lrt
+	g++ -std=c++11 -D_XOPEN_SOURCE=700 src/send_image_2.cc -o send_image.o -Iinclude/ -pthread -lrt
+	g++ -std=c++11 src/execute_command.cc -o toggle_led.o -Iinclude/ -lwiringPi
 
 
 debug:
 	# make sure LD_LIBRARY_PATH points to /usr/local/lib, otherwise raspicam.so will be missing
-	g++ -g -std=c++11 src/capture_image.cc  -o capture.o -Iinclude/  -lraspicam  -pthread -lrt
-	# g++ -g -std=c++11 -Iinclude/  -lraspicam src/send_image.cc -pthread -lrt -o send.o
+	g++ -g -std=c++11 -D_XOPEN_SOURCE=700 src/capture_image_2.cc -o capture_image.o -Iinclude/ -lraspicam -pthread -lrt
+	g++ -g -std=c++11 -D_XOPEN_SOURCE=700 src/send_image_2.cc -o send_image.o -Iinclude/ -pthread -lrt
+	g++ -g -std=c++11 src/execute_command.cc -o toggle_led.o -Iinclude/ -lwiringPi
 
 test:
 	# g++ -g -std=c++11 src/test_send.cc -o test.o -Iinclude/ -lraspicam -pthread -lrt
