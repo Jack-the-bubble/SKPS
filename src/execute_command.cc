@@ -8,6 +8,14 @@
 #include <cstring>
 #include <unistd.h>
 
+#include "semafor.h"
+
+// imports for logger
+#include <chrono>
+#include <fcntl.h>
+#include <mqueue.h>
+#include <sys/stat.h>
+
 int connect_to_server();
 
 
@@ -20,6 +28,35 @@ int main()
     pinMode(1, INPUT);		// Configure GPIO1 as an input
     
     digitalWrite(0, 0);//init output
+
+    // init data for logger
+    char client_queue_name [64];
+    short queue_name_len;
+    char og_publisher_name [64];
+    mqd_t qd_server, qd_client;   // queue descriptors
+    int64_t chrono_current_time;
+
+    // create the client queue for receiving messages from server
+    sprintf (client_queue_name, "/execute-command-%d-", getpid ());
+    queue_name_len = strlen(client_queue_name);
+
+    // open queues
+    struct mq_attr attr;
+
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = MAX_MESSAGES;
+    attr.mq_msgsize = MAX_MSG_SIZE;
+    attr.mq_curmsgs = 0;
+
+    if ((qd_client = mq_open (client_queue_name, O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &attr)) == -1) {
+        perror ("Client: mq_open (client)");
+        exit (1);
+    }
+
+    if ((qd_server = mq_open (SERVER_QUEUE_NAME, O_WRONLY)) == -1) {
+        perror ("Client: mq_open (server)");
+        exit (1);
+    }
 
 
     // establish server connection
@@ -40,6 +77,15 @@ int main()
         do {
             bytes_recv = recv(sockFD, &reply.front(), reply.size(), 0);
         } while(bytes_recv != expected_bytes);
+
+        // send info about capturing an image to logger
+        chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
+        sprintf(client_queue_name+queue_name_len, " got command %s at %lld", reply.c_str(), chrono_current_time);
+        
+        if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
+            perror ("Client: Not able to send message to server");
+            continue;
+        }
 
         if (strcmp(reply.c_str(), "on ")) {
             digitalWrite(0, 1);

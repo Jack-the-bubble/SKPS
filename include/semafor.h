@@ -18,6 +18,12 @@
     #define PRODUCER_SLEEP_SEC 1
     #define KEY 1111
 
+    #define SERVER_QUEUE_NAME   "/skps-logger"
+    #define QUEUE_PERMISSIONS 0660
+    #define MAX_MESSAGES 10
+    #define MAX_MSG_SIZE 256
+    #define MSG_BUFFER_SIZE MAX_MSG_SIZE + 10
+
     // A structure to store BUFER and semaphores for synchronization
     typedef struct
     {

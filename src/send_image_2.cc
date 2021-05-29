@@ -16,6 +16,12 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
+// imports for logger
+#include <chrono>
+#include <fcntl.h>
+#include <mqueue.h>
+#include <sys/stat.h>
+
 int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num);
 int connect_to_server();
 
@@ -24,6 +30,35 @@ int main(int argc, char** argv) {
     int n;
     int max_iter = BUFFER_SIZE;
     MEM *S = memory();
+
+    // init data for logger
+    char client_queue_name [64];
+    short queue_name_len;
+    char og_publisher_name [64];
+    mqd_t qd_server, qd_client;   // queue descriptors
+    int64_t chrono_current_time;
+
+    // create the client queue for receiving messages from server
+    sprintf (client_queue_name, "/send-image-%d-", getpid ());
+    queue_name_len = strlen(client_queue_name);
+
+    // open queues
+    struct mq_attr attr;
+
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = MAX_MESSAGES;
+    attr.mq_msgsize = MAX_MSG_SIZE;
+    attr.mq_curmsgs = 0;
+
+    if ((qd_client = mq_open (client_queue_name, O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &attr)) == -1) {
+        perror ("Client: mq_open (client)");
+        exit (1);
+    }
+
+    if ((qd_server = mq_open (SERVER_QUEUE_NAME, O_WRONLY)) == -1) {
+        perror ("Client: mq_open (server)");
+        exit (1);
+    }
 
     char img_name[24];
     const char *name = "/rpi-images";	// file name
@@ -72,6 +107,15 @@ int main(int argc, char** argv) {
         sprintf(img_name, "from-shared-%d.ppm", n);
         memcpy(data, shm_base+n*SIZE, SIZE*sizeof(unsigned char));
 
+        // send info about capturing an image to logger
+        chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
+        sprintf(client_queue_name+queue_name_len, " got from shared at %lld", chrono_current_time);
+        
+        if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
+            perror ("Client: Not able to send message to server");
+            continue;
+        }
+
         // here we'll send to tcp server
         // std::ofstream outFile(img_name, std::ios::binary);
         // outFile<<"P6\n"<<1280 <<" "<<960 <<" 255\n";
@@ -79,16 +123,24 @@ int main(int argc, char** argv) {
 
 
         // send image in chunks
-        // auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
+        auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
         // std::cout<<"Sent file "<<img_name<<", sent bytes: "<<nbytes_send<<std::endl;
         std::cout<<"Sent file "<<img_name<<std::endl;
-
+        
+        // send info about capturing an image to logger
+        chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
+        sprintf(client_queue_name+queue_name_len, " sent image at %lld", chrono_current_time);
+        
+        if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
+            perror ("Client: Not able to send message to server");
+            continue;
+        }
 
         // auto bytes_recv = recv(sockFD, &reply.front(), reply.size(), 0);
 
         // std::cout<<"Response: "<<reply<<std::endl;
 
-        std::cout<<"Got data from semaphore "<<(S->buff)[n]<<std::endl;
+        // std::cout<<"Got data from semaphore "<<(S->buff)[n]<<std::endl;
         sem_post(&S->mutex);
         sem_post(&S->empty);
         // sleep(CONSUMER_SLEEP_SEC);
