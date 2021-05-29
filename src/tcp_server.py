@@ -1,6 +1,7 @@
 import socket
 import sys
 from _thread import start_new_thread
+import gesture
 
 
 HOST = '' # all availabe interfaces
@@ -11,6 +12,7 @@ chunk_size = 1024
 chunk_num = SIZE/chunk_size
 file_num = 0
 led_feedback = None
+max_img_num = 30
 # self.request - TCP socket connected to the client
 chunk_idx = 0
 different_chunks = 0
@@ -79,6 +81,10 @@ while True:
             in_file.close()
             chunk_idx = 0
             # send data to led client
+            #########
+            gest = gesture.main()
+            #print(gest)
+            #########
             if file_num % 2 == 0:
                 led_conn.sendall("on ".encode())
             else:
@@ -87,6 +93,7 @@ while True:
             led_feedback = led_conn.recv(2)
 
             file_num = file_num + 1
+            file_num = file_num % max_img_num
             in_file = open('in_img-{}.ppm'.format(file_num), 'w')
             in_file.write('P6\n1280 960 255\n')
             in_file.close()
