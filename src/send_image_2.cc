@@ -16,17 +16,12 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
-// imports for logger
-// #include <chrono>
-// #include <fcntl.h>
-// #include <mqueue.h>
-// #include <sys/stat.h>
 
 int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num);
 int connect_to_server();
 
 int main(int argc, char** argv) {
-    init();
+    // init();
     int n;
     int max_iter = BUFFER_SIZE;
     MEM *S = memory();
@@ -97,7 +92,6 @@ int main(int argc, char** argv) {
 
     std::cout<<"Waiting for images from shared mem"<<std::endl;
 
-    // for (n= 0; n<max_iter; n++)
     while(1)
     {
         sem_wait(&S->full);
@@ -112,14 +106,6 @@ int main(int argc, char** argv) {
         sprintf(client_queue_name+queue_name_len, " got from shared at %lld", chrono_current_time);
         send_log_message(qd_server, client_queue_name, queue_name_len);
         
-        // chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
-        // sprintf(client_queue_name+queue_name_len, " got from shared at %lld", chrono_current_time);
-        
-        // if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
-        //     perror ("Client: Not able to send message to server");
-        // }
-
-
         // send image in chunks
         auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
         
@@ -127,11 +113,6 @@ int main(int argc, char** argv) {
         chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
         sprintf(client_queue_name+queue_name_len, " sent image at %lld", chrono_current_time);
         send_log_message(qd_server, client_queue_name, queue_name_len);
-
-
-        // if (mq_send (qd_server, client_queue_name, strlen (client_queue_name) + 1, 0) == -1) {
-        //     perror ("Client: Not able to send message to server");
-        // }
 
         sem_post(&S->mutex);
         sem_post(&S->empty);
