@@ -1,3 +1,13 @@
+/* sources used to create this project
+https://www.sarathlakshman.com/2010/10/15/producer-consumer-problem-using-posix-semaphores
+https://riptutorial.com/cplusplus/example/24000/hello-tcp-client
+http://www.cse.psu.edu/~deh25/cmpsc473/notes/OSC/Processes/shm.html
+
+Authors:
+Marcin Skrzypkowski
+Bartosz Bok
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,12 +34,9 @@ int main (int argc, char **argv)
     // open file to write logs
     freopen("log.txt", "w", stdout);
 
-    mqd_t qd_server, qd_client;   // queue descriptors
-    long token_number = 1; // next token to be given to client
+    mqd_t qd_server;   // queue descriptor
 
     printf("Begin writing log at %lld\n", chrono_current_time);
-
-    // printf ("Server: Hello, World!\n");
 
     struct mq_attr attr;
 
@@ -43,31 +50,14 @@ int main (int argc, char **argv)
         exit (1);
     }
     char in_buffer [MSG_BUFFER_SIZE];
-    // char out_buffer [MSG_BUFFER_SIZE];
 
     while (1) {
-        // get the oldest message with highest priority
+        // get the messages
         if (mq_receive (qd_server, in_buffer, MSG_BUFFER_SIZE, NULL) == -1) {
             perror ("Server: mq_receive");
             exit (1);
         }
 
         printf ("Server: message received: %s.\n", in_buffer);
-        // send reply message to client
-
-        // if ((qd_client = mq_open (in_buffer, O_WRONLY)) == 1) {
-        //     perror ("Server: Not able to open client queue");
-        //     continue;
-        // }
-
-        // sprintf (out_buffer, "%ld", token_number);
-
-        // if (mq_send (qd_client, out_buffer, strlen (out_buffer) + 1, 0) == -1) {
-        //     perror ("Server: Not able to send message to client");
-        //     continue;
-        // }
-
-        // printf ("Server: response sent to client.\n");
-        token_number++;
     }
 }

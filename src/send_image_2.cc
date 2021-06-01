@@ -1,3 +1,13 @@
+/* sources used to create this project
+https://www.sarathlakshman.com/2010/10/15/producer-consumer-problem-using-posix-semaphores
+https://riptutorial.com/cplusplus/example/24000/hello-tcp-client
+http://www.cse.psu.edu/~deh25/cmpsc473/notes/OSC/Processes/shm.html
+
+Authors:
+Marcin Skrzypkowski
+Bartosz Bok
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,21 +31,10 @@ int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num
 int connect_to_server();
 
 int main(int argc, char** argv) {
-    // init();
+    // init data for semaphores
     int n;
     int max_iter = BUFFER_SIZE;
     MEM *S = memory();
-
-    // init data for logger
-    char client_queue_name [MAX_MSG_SIZE];
-    short queue_name_len;
-    char og_publisher_name [64];
-    mqd_t qd_server, qd_client;   // queue descriptors
-    int64_t chrono_current_time;
-
-    // create the client queue for receiving messages from server
-    sprintf (client_queue_name, "/send-image-%d-", getpid ());
-    queue_name_len = strlen(client_queue_name);
 
     // open queues
     struct mq_attr attr;
@@ -45,17 +44,23 @@ int main(int argc, char** argv) {
     attr.mq_msgsize = MAX_MSG_SIZE;
     attr.mq_curmsgs = 0;
 
-    if ((qd_client = mq_open (client_queue_name, O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &attr)) == -1) {
-        perror ("Client: mq_open (client)");
-        exit (1);
-    }
+    // init data for logger
+    char client_queue_name [MAX_MSG_SIZE];
+    short queue_name_len;
+    char og_publisher_name [64];
+    mqd_t qd_server;   // queue descriptors
+    int64_t chrono_current_time;
 
     if ((qd_server = mq_open (SERVER_QUEUE_NAME, O_WRONLY)) == -1) {
         perror ("Client: mq_open (server)");
         exit (1);
     }
+    
+    // create the client queue for updating logger process
+    sprintf (client_queue_name, "/send-image-%d-", getpid ());
+    queue_name_len = strlen(client_queue_name);
 
-    char img_name[24];
+    // init data for shared memory
     const char *name = "/rpi-images";	// file name
     const int SIZE = 1228800;
 
@@ -75,10 +80,15 @@ int main(int argc, char** argv) {
     shm_base = (char *)mmap(0, SIZE*BUFFER_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
     if (shm_base == MAP_FAILED) {
         printf("cons: Map failed: %s\n", strerror(errno));
-        // close and unlink?
         exit(1);
     }
 
+    // prepare data for sending to tcp server
+    std::string reply;
+    int chunk_size = 1024;
+    int chunk_num = SIZE/chunk_size;
+
+    // establish tcp connection with server
     int sockFD = connect_to_server();
     if (sockFD < 0){
         printf("cons: Error while connecting to server %s\n", strerror(errno));
@@ -86,19 +96,13 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    std::string reply;
-    int chunk_size = 1024;
-    int chunk_num = SIZE/chunk_size;
-
-    std::cout<<"Waiting for images from shared mem"<<std::endl;
-
     while(1)
     {
+        // wait for capture process to save image in shared memory using mutex
         sem_wait(&S->full);
         sem_wait(&S->mutex);
         sem_getvalue(&S->full, &n);
 
-        sprintf(img_name, "from-shared-%d.ppm", n);
         memcpy(data, shm_base+n*SIZE, SIZE*sizeof(unsigned char));
 
         // send info about capturing an image to logger
@@ -108,12 +112,15 @@ int main(int argc, char** argv) {
         
         // send image in chunks
         auto nbytes_send = send_image(sockFD, data, chunk_size, chunk_num);
+        if (nbytes_send < SIZE)
+            break;
         
         // send info about capturing an image to logger
         chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
         sprintf(client_queue_name+queue_name_len, " sent image at %lld", chrono_current_time);
         send_log_message(qd_server, client_queue_name, queue_name_len);
 
+        // signal other processes about sent image
         sem_post(&S->mutex);
         sem_post(&S->empty);
     }
@@ -163,19 +170,14 @@ int connect_to_server() {
         return -3;
     }
 
-    // socket() call creates a new socket and returns it's descriptor
+    // create linux socket
     int sockFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
     if (sockFD == -1) {
         std::cerr << "Error while creating socket\n";
         return -4;
     }
 
-    // Note: there is no bind() call as there was in Hello TCP Server
-    // why? well you could call it though it's not necessary
-    // because client doesn't necessarily has to have a fixed port number
-    // so next call will bind it to a random available port number
-
-    // connect() call tries to establish a TCP connection to the specified server
+    // establish connection with server
     int connectR = connect(sockFD, p->ai_addr, p->ai_addrlen);
     if (connectR == -1) {
         close(sockFD);
@@ -192,6 +194,7 @@ int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num
     std::string reply("no");
     for (int i=0; i<chunk_num; i++){
         do {
+            // send chunk of an image and check if correct number of bytes was actually sent
             current_bytes = send(socket_fd, (char *)data+i*chunk_size, chunk_size, 0);
             if (current_bytes < chunk_size){
                 return -1;

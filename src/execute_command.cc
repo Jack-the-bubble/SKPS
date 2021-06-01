@@ -1,4 +1,14 @@
-#include <iostream>		// Include all needed libraries here
+/* sources used to create this project
+https://www.sarathlakshman.com/2010/10/15/producer-consumer-problem-using-posix-semaphores
+https://riptutorial.com/cplusplus/example/24000/hello-tcp-client
+http://www.cse.psu.edu/~deh25/cmpsc473/notes/OSC/Processes/shm.html
+
+Authors:
+Marcin Skrzypkowski
+Bartosz Bok
+*/
+
+#include <iostream>		
 #include <wiringPi.h>
 
 // imports for tcp client
@@ -19,13 +29,12 @@
 int connect_to_server();
 
 
-using namespace std;		// No need to keep using “std”
+using namespace std;
 
 int main()
 {
     wiringPiSetup();			// Setup the library
     pinMode(0, OUTPUT);		// Configure GPIO0 as an output
-    pinMode(1, INPUT);		// Configure GPIO1 as an input
     
     digitalWrite(0, 0);//init output
 
@@ -73,9 +82,9 @@ int main()
     sprintf(client_queue_name+queue_name_len, " connected to server");
     send_log_message(qd_server, client_queue_name, queue_name_len);
 
-// Main program loop
     while(1)
     {
+        // receive command untill expected number of bytes is loaded
         do {
             bytes_recv = recv(sockFD, &reply.front(), reply.size(), 0);
         } while(bytes_recv != expected_bytes);
@@ -121,14 +130,14 @@ int connect_to_server() {
         return -3;
     }
 
-    // socket() call creates a new socket and returns it's descriptor
+    // create new socket
     int sockFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
     if (sockFD == -1) {
         std::cerr << "Error while creating socket\n";
         return -4;
     }
 
-    // connect() call tries to establish a TCP connection to the specified server
+    // establish tcp connection with server
     int connectR = connect(sockFD, p->ai_addr, p->ai_addrlen);
     if (connectR == -1) {
         close(sockFD);
