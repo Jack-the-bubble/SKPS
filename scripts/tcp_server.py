@@ -40,19 +40,6 @@ except socket.error as msg:
 s.listen(10)
 print("Listening...")
 
-# The code below is what you're looking for ############
-
-# def client_thread(conn):
-#     conn.send("Welcome to the Server. Type messages and press enter to send.\n")
-#
-#     while True:
-#         data = conn.recv(1024)
-#         if not data:
-#             break
-#         reply = "OK . . " + data
-#         conn.sendall(reply)
-#     conn.close()
-
 while True:
     # blocking call, waits to accept a connection
 
