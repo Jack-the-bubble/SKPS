@@ -21,10 +21,10 @@ Bartosz Bok
 #include "semafor.h"
 
 // imports for logger
-#include <chrono>
-#include <fcntl.h>
-#include <mqueue.h>
-#include <sys/stat.h>
+// #include <chrono>
+// #include <fcntl.h>
+// #include <mqueue.h>
+// #include <sys/stat.h>
 
 int connect_to_server();
 
@@ -70,6 +70,9 @@ int main()
 
     // establish server connection
     std::string reply("off");
+    std::string on_cmd("on");
+    std::string off_cmd("off");
+    size_t found, off_found;
     int expected_bytes = 3;
     int bytes_recv = 0;
     int bytes_sent;
@@ -91,13 +94,14 @@ int main()
 
         // send info about capturing an image to logger
         chrono_current_time = std::chrono::system_clock::now().time_since_epoch().count();
-
-        if (strcmp(reply.c_str(), "on ")) {
+        if (reply.find(on_cmd) != std::string::npos) {
+        // if (strcmp(reply.c_str(), "on ")) {
             sprintf(client_queue_name+queue_name_len, " got command 'on' at %lld", chrono_current_time);
             send_log_message(qd_server, client_queue_name, queue_name_len);
             digitalWrite(0, 1);
         }
-        else if (strcmp(reply.c_str(), "off")) {
+        else if (reply.find(off_cmd) != std::string::npos) {
+        // else if (strcmp(reply.c_str(), "off")) {
             sprintf(client_queue_name+queue_name_len, " got command 'off' at %lld", chrono_current_time);
             send_log_message(qd_server, client_queue_name, queue_name_len);
             digitalWrite(0, 0);
