@@ -34,9 +34,9 @@ using namespace std;
 int main()
 {
     wiringPiSetup();			// Setup the library
-    pinMode(0, OUTPUT);		// Configure GPIO0 as an output
+    pinMode(25, OUTPUT);		// Configure GPIO0 as an output
     
-    digitalWrite(0, 0);//init output
+    digitalWrite(25, 0);//init output
 
     // init data for logger
     char client_queue_name [64];
@@ -98,13 +98,13 @@ int main()
         // if (strcmp(reply.c_str(), "on ")) {
             sprintf(client_queue_name+queue_name_len, " got command 'on' at %lld", chrono_current_time);
             send_log_message(qd_server, client_queue_name, queue_name_len);
-            digitalWrite(0, 1);
+            digitalWrite(25, 1);
         }
         else if (reply.find(off_cmd) != std::string::npos) {
         // else if (strcmp(reply.c_str(), "off")) {
             sprintf(client_queue_name+queue_name_len, " got command 'off' at %lld", chrono_current_time);
             send_log_message(qd_server, client_queue_name, queue_name_len);
-            digitalWrite(0, 0);
+            digitalWrite(25, 0);
         }
 
 
