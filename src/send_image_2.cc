@@ -205,9 +205,9 @@ int send_image(int socket_fd, unsigned char *data, int chunk_size, int chunk_num
 
         bytes_sent += current_bytes;
 
-        std::cout<<"Response for chunk: "<<reply<<std::endl;
 
     }
+    std::cout<<"Sent image"<<std::endl;
 
     return bytes_sent;
 }
