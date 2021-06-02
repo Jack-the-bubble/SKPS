@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import List
 
 import matplotlib.pyplot as plt
 
@@ -20,8 +21,11 @@ import matplotlib.pyplot as plt
 camera_process = {}
 sender_process = {}
 led_process = {}
+camera_time_stamp = []
+sender_time_stamp = []
+led_timestamp = []
 
-with open('log-2021-05-29-23-07.txt', 'r') as in_log:
+with open('log-latest.txt', 'r') as in_log:
 	# extract data from log file
 	file_content = [line.rstrip('\n') for line in in_log]
 	for line in file_content:
@@ -30,6 +34,9 @@ with open('log-2021-05-29-23-07.txt', 'r') as in_log:
 			# for each message type in process create new list
 			words = line.split(' ')
 			key = " ".join(words[1:-1])
+			number = [int(s) for s in line.split() if s.isdigit()]
+			camera_time_stamp.append(number[0])
+
 			if key not in camera_process.keys():
 				camera_process[key] = []
 			try:
@@ -41,6 +48,9 @@ with open('log-2021-05-29-23-07.txt', 'r') as in_log:
 		elif 'send-image' in line:
 			words = line.split(' ')
 			key = " ".join(words[1:-1])
+			number = [int(s) for s in line.split() if s.isdigit()]
+			sender_time_stamp.append(number[0])
+
 			if key not in sender_process.keys():
 				sender_process[key] = []
 			try:
@@ -52,6 +62,11 @@ with open('log-2021-05-29-23-07.txt', 'r') as in_log:
 		elif 'execute-command' in line:
 			words = line.split(' ')
 			key = " ".join(words[1:-1])
+			number = int(words[-1]) if words[-1].isdigit() else None
+			if number is None:
+				continue
+
+			led_timestamp.append(number)
 			if key not in led_process.keys():
 				led_process[key] = []
 			try:
@@ -61,28 +76,58 @@ with open('log-2021-05-29-23-07.txt', 'r') as in_log:
 				continue
 
 	# place all points on one plot
-
-	print("did sth")
-	i = 1
+	i=1
 	plt.figure(1)
 
 	# plt.plot(camera_process['captured at'], [1 for stamp in camera_process['captured at']], '*', label='captured at')
 	for key in camera_process.keys():
 		# timestamps = get_timestamps(camera_process[key])
 		plt.plot(camera_process[key], [i for stamp in camera_process[key]], '.', label=key)
-		# i = i + 1
 
-	# plt.legend(loc='best')
 
-	# plt.figure(2)
 	for key in sender_process.keys():
 		plt.plot(sender_process[key], [i for stamp in sender_process[key]], '.', label=key)
-	# i = i + 1
+
+	for key in led_process.keys():
+		plt.plot(led_process[key], [i for stamp in led_process[key]], '.', label=key)
+
+
 	plt.legend(loc='best')
+	# plt.show()
+
+	# plot histogram of intervals between messages for each message type
+
+	# camera capture
+	plt.figure(2)
+	camera_time_stamp = [element/1000000 for element in camera_time_stamp]
+	delta_camera = []
+	for i in range(int(len(camera_time_stamp)/2)):
+		delta_camera.append(camera_time_stamp[2*i+1] - camera_time_stamp[2*i])
+
+	plt.hist(delta_camera)
+	plt.xlabel("różnica czasu [ms]")
+	plt.ylabel("ilość próbek")
+	# plt.show()
+
+	# sender
+	plt.figure(3)
+	sender_time_stamp = [element/1000000 for element in sender_time_stamp]
+	delta_sender = []
+	for i in range(int(len(sender_time_stamp) / 2)):
+		delta_sender.append(sender_time_stamp[2 * i + 1] - sender_time_stamp[2 * i])
+
+	plt.hist(delta_sender)
+	plt.xlabel("różnica czasu [ms]")
+	plt.ylabel("ilość próbek")
+
+	# commands histogram
+	led_timestamp = [stamp/1000000 for stamp in led_timestamp]
+	delta_led = []
+	for i in range(int(len(led_timestamp)/2)):
+		delta_led.append(led_timestamp[2*i+1] - led_timestamp[2*i])
+
+	plt.figure(4)
+	plt.hist(delta_led)
+	plt.xlabel("różnica czasu [ms]")
+	plt.ylabel("ilość próbek")
 	plt.show()
-	# plot intervals between messages for each message type
-
-	# calculate histograms for intervals from each message type
-
-
-
